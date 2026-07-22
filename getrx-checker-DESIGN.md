@@ -30,7 +30,7 @@
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  getRx Checker                                          │
-│  Supabase (ztjtynjesfnccygybcen) + GitHub              │
+│  Supabase (xvrlnweewzexbilozymq — "GetRXChecker") + GitHub │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  Edge Functions:                                        │

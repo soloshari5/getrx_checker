@@ -2,7 +2,7 @@
 
 Fraud/abuse detection + OSINT prescriber verification for getRx — an e-prescribing platform for controlled substances (Schedule II–V).
 
-**Status:** v1 — Supabase Edge Functions deployed, manual review dashboard live
+**Status:** pre-v1 — schema, Edge Functions, and dashboard are written but NOT yet deployed. The Supabase project referenced in earlier docs (`ztjtynjesfnccygybcen`) does not exist; the real project is `xvrlnweewzexbilozymq` ("GetRXChecker"), which currently has no getRx tables or functions deployed.
 
 ---
 
@@ -49,7 +49,7 @@ All thresholds are configurable in the `fraud_rules` table.
 ## Architecture
 
 ```
-Supabase (project: ztjtynjesfnccygybcen)
+Supabase (project: xvrlnweewzexbilozymq — "GetRXChecker")
 ├── Tables:
 │   ├── getrx_prescribers
 │   ├── getrx_prescriptions
@@ -76,9 +76,7 @@ Edge Functions live under `supabase/functions/<name>/index.ts` (Supabase's expec
 
 ### 1. Database
 
-The base schema is already applied to Supabase project `ztjtynjesfnccygybcen`. A follow-up migration (`20260722_add_address_zip_npi_registry.sql`) adds the `address`/`zip` columns and is safe to re-run (uses `IF NOT EXISTS`).
-
-To apply to a new project:
+**Not yet applied.** Project `xvrlnweewzexbilozymq` ("GetRXChecker") currently has none of these tables — run both migrations against it:
 ```sql
 -- Run supabase/migrations/20260714_getrx_checker_v1.sql
 -- Then supabase/migrations/20260722_add_address_zip_npi_registry.sql
