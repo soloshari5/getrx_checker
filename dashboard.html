@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>getRx Checker — Manual Review</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f7; color: #1d1d1f; line-height: 1.5; }
+  .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .subtitle { color: #6e6e73; font-size: 14px; margin-bottom: 24px; }
+  .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  label { display: block; font-size: 13px; font-weight: 600; color: #6e6e73; margin-bottom: 4px; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid #d2d2d7; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
+  input:focus { outline: none; border-color: #007aff; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button { background: #007aff; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  button:hover { background: #005ecb; }
+  button:disabled { background: #c7c7cc; cursor: not-allowed; }
+  .risk-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+  .risk-clean { background: #d1fae5; color: #065f46; }
+  .risk-low { background: #fef3c7; color: #92400e; }
+  .risk-review { background: #fed7aa; color: #9a3412; }
+  .risk-block { background: #fee2e2; color: #991b1b; }
+  .finding { border-left: 3px solid #d2d2d7; padding: 8px 12px; margin: 8px 0; background: #fafafa; border-radius: 0 6px 6px 0; }
+  .finding.critical { border-color: #dc2626; background: #fef2f2; }
+  .finding.high { border-color: #ea580c; background: #fff7ed; }
+  .finding.medium { border-color: #d97706; background: #fffbeb; }
+  .finding.info { border-color: #9ca3af; }
+  .finding-title { font-weight: 600; font-size: 14px; }
+  .finding-snippet { font-size: 13px; color: #6e6e73; margin-top: 2px; }
+  .finding-url { font-size: 12px; color: #007aff; margin-top: 2px; }
+  .finding-url a { color: inherit; }
+  .muted { color: #6e6e73; font-size: 13px; }
+  .alert { padding: 12px 16px; border-radius: 8px; margin: 8px 0; font-size: 14px; }
+  .alert-high { background: #fff7ed; border: 1px solid #fed7aa; }
+  .alert-critical { background: #fef2f2; border: 1px solid #fecaca; }
+  .alert-medium { background: #fffbeb; border: 1px solid #fde68a; }
+  .hidden { display: none; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #e5e5e7; color: #6e6e73; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+  tr:hover td { background: #fafafa; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .pill-green { background: #d1fae5; color: #065f46; }
+  .pill-yellow { background: #fef3c7; color: #92400e; }
+  .pill-orange { background: #fed7aa; color: #9a3412; }
+  .pill-red { background: #fee2e2; color: #991b1b; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🦦 getRx Checker</h1>
+  <p class="subtitle">Fraud detection + OSINT prescriber verification — Manual Review</p>
+
+  <div class="card">
+    <h2 style="font-size:16px;margin-bottom:12px;">Run a Check</h2>
+    <div class="row">
+      <div>
+        <label>First Name *</label>
+        <input id="first_name" placeholder="Dan">
+      </div>
+      <div>
+        <label>Last Name *</label>
+        <input id="last_name" placeholder="Rudd">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Email</label>
+        <input id="email" type="email" placeholder="dr@example.com">
+      </div>
+      <div>
+        <label>NPI (optional)</label>
+        <input id="npi" placeholder="1234567890">
+      </div>
+    </div>
+    <div class="row" style="grid-template-columns: 2fr 1fr 1fr">
+      <div>
+        <label>Address (optional)</label>
+        <input id="address" placeholder="123 Main St">
+      </div>
+      <div>
+        <label>State</label>
+        <input id="state" placeholder="TN" maxlength="2" style="text-transform:uppercase">
+      </div>
+      <div>
+        <label>Zip</label>
+        <input id="zip" placeholder="37167" maxlength="5">
+      </div>
+    </div>
+    <p class="muted" style="margin:-8px 0 12px">State/zip are used only against public records — NPI Registry lookup + web search disambiguation. No sensitive data is stored or queried.</p>
+    <button id="checkBtn" onclick="runCheck()">Run Check</button>
+    <span id="statusMsg" class="muted" style="margin-left:12px;"></span>
+  </div>
+
+  <div id="results" class="hidden">
+    <div class="card">
+      <h2 style="font-size:16px;margin-bottom:8px;">Risk Assessment</h2>
+      <div id="riskSummary"></div>
+    </div>
+
+    <div class="card" id="fraudCard" style="display:none">
+      <h2 style="font-size:16px;margin-bottom:8px;">🚨 Fraud Alerts</h2>
+      <div id="fraudAlerts"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:16px;margin-bottom:8px;">🔍 OSINT Findings</h2>
+      <div id="osintFindings"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="exportDocx()" style="background:#6e6e73">Export .docx Report</button>
+        <button onclick="markReviewed()" style="background:#34c759">Mark Reviewed ✓</button>
+        <button onclick="dismissFlags()" style="background:#ff9500">Dismiss Flags</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:16px;margin-bottom:8px;">Recent Checks</h2>
+    <table id="recentTable">
+      <thead><tr><th>Name</th><th>Email</th><th>Risk</th><th>Status</th><th>Checked</th></tr></thead>
+      <tbody id="recentBody"><tr><td colspan="5" class="muted">No checks yet</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://ztjtynjesfnccygybcen.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0anR5bmplc2ZuY2N5Z3liY2VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NzgxNDYsImV4cCI6MjA2NjQ1NDE0Nn0.PL7g8Q5tG9J8uQ5X5X5X5X5X5X5X5X5X5X5X5X5X5X8"; // placeholder - REPLACE with real anon key
+
+let lastResult = null;
+
+async function runCheck() {
+  const first_name = document.getElementById('first_name').value.trim();
+  const last_name = document.getElementById('last_name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const npi = document.getElementById('npi').value.trim();
+  const address = document.getElementById('address').value.trim();
+  const state = document.getElementById('state').value.trim().toUpperCase();
+  const zip = document.getElementById('zip').value.trim();
+
+  if (!first_name || !last_name) { alert('First and last name required'); return; }
+
+  const btn = document.getElementById('checkBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Checking…';
+  statusMsg.textContent = 'Running OSINT scan…';
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/check-prescriber`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({
+        first_name, last_name,
+        email: email || undefined,
+        npi: npi || undefined,
+        address: address || undefined,
+        state: state || undefined,
+        zip: zip || undefined,
+      }),
+    });
+    const data = await resp.json();
+    lastResult = data;
+    renderResults(data);
+    addToRecent(data);
+    statusMsg.textContent = '';
+  } catch (e) {
+    statusMsg.textContent = 'Error: ' + e;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Check';
+  }
+}
+
+function renderResults(data) {
+  document.getElementById('results').classList.remove('hidden');
+
+  const risk = data.risk_score || 0;
+  const status = data.status || 'clean';
+  let badgeClass = 'risk-clean', badgeText = 'CLEAN';
+  if (status === 'block' || risk >= 70) { badgeClass = 'risk-block'; badgeText = 'BLOCK'; }
+  else if (status === 'review' || risk >= 30) { badgeClass = 'risk-review'; badgeText = 'REVIEW'; }
+  else if (risk > 0) { badgeClass = 'risk-low'; badgeText = 'LOW RISK'; }
+
+  document.getElementById('riskSummary').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <span class="risk-badge ${badgeClass}">${badgeText}</span>
+      <span style="font-size:24px;font-weight:700">${risk}</span>
+      <span class="muted">/ 100 risk score</span>
+    </div>
+    <p class="muted">OSINT: ${data.osint?.findings?.length || 0} findings · Fraud: ${data.fraud?.alert_count || 0} alerts</p>
+  `;
+
+  // Fraud alerts
+  const fraudDiv = document.getElementById('fraudAlerts');
+  const fraudCard = document.getElementById('fraudCard');
+  if (data.fraud?.alerts?.length > 0) {
+    fraudCard.style.display = '';
+    fraudDiv.innerHTML = data.fraud.alerts.map(a => `
+      <div class="alert alert-${a.severity}">
+        <strong>${a.alert_type.replace(/_/g, ' ').toUpperCase()}</strong> 
+        <span class="pill pill-${a.severity === 'critical' ? 'red' : a.severity === 'high' ? 'orange' : 'yellow'}">${a.severity}</span>
+        <div class="muted" style="margin-top:4px">${JSON.stringify(a.details)}</div>
+      </div>
+    `).join('');
+  } else {
+    fraudCard.style.display = 'none';
+  }
+
+  // OSINT findings
+  const findings = data.osint?.findings || [];
+  const findingsDiv = document.getElementById('osintFindings');
+  if (findings.length === 0) {
+    findingsDiv.innerHTML = '<p class="muted">No findings — clean OSINT scan.</p>';
+  } else {
+    findingsDiv.innerHTML = findings.map(f => `
+      <div class="finding ${f.severity}">
+        <div class="finding-title">${f.title || f.finding_type}
+          <span class="pill pill-${f.severity === 'critical' ? 'red' : f.severity === 'high' ? 'orange' : f.severity === 'medium' ? 'yellow' : 'green'}" style="margin-left:6px">${f.severity}</span>
+        </div>
+        ${f.snippet ? `<div class="finding-snippet">${f.snippet}</div>` : ''}
+        ${f.url ? `<div class="finding-url"><a href="${f.url}" target="_blank">${f.url}</a></div>` : ''}
+      </div>
+    `).join('');
+  }
+}
+
+const recentChecks = [];
+function addToRecent(data) {
+  const p = data.prescriber || {};
+  recentChecks.unshift({
+    name: `${p.first_name} ${p.last_name}`,
+    email: p.email || '—',
+    risk: data.risk_score,
+    status: data.status,
+    time: new Date().toLocaleTimeString(),
+  });
+  const tbody = document.getElementById('recentBody');
+  tbody.innerHTML = recentChecks.slice(0, 10).map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td class="muted">${r.email}</td>
+      <td><strong>${r.risk}</strong></td>
+      <td><span class="pill pill-${r.status === 'clean' ? 'green' : r.status === 'review' ? 'orange' : 'red'}">${r.status}</span></td>
+      <td class="muted">${r.time}</td>
+    </tr>
+  `).join('');
+}
+
+function exportDocx() {
+  alert('DOCX export — TODO: wire to /export-docx Edge Function\n\nFor now, use Cmd+P → Save as PDF');
+}
+
+async function markReviewed() {
+  if (!lastResult?.osint_check_id) { alert('No check to mark reviewed'); return; }
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/osint_checks?id=eq.${lastResult.osint_check_id}`, {
+      method: 'PATCH',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: 'reviewed', reviewed_at: new Date().toISOString() }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    document.getElementById('statusMsg').textContent = 'Marked as reviewed.';
+  } catch (e) {
+    alert('Failed to mark reviewed: ' + e);
+  }
+}
+
+async function dismissFlags() {
+  if (!lastResult?.osint_check_id) { alert('No check to dismiss'); return; }
+  if (!confirm('Dismiss all flags for this check?')) return;
+  try {
+    const requests = [
+      fetch(`${SUPABASE_URL}/rest/v1/osint_checks?id=eq.${lastResult.osint_check_id}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'dismissed', reviewed_at: new Date().toISOString() }),
+      }),
+    ];
+    if (lastResult.prescriber_id) {
+      requests.push(fetch(`${SUPABASE_URL}/rest/v1/fraud_alerts?prescriber_id=eq.${lastResult.prescriber_id}&resolution=is.null`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ resolution: 'dismissed', reviewed_at: new Date().toISOString() }),
+      }));
+    }
+    const results = await Promise.all(requests);
+    for (const r of results) if (!r.ok) throw new Error(await r.text());
+    document.getElementById('statusMsg').textContent = 'Flags dismissed.';
+  } catch (e) {
+    alert('Failed to dismiss flags: ' + e);
+  }
+}
+
+// Allow Enter to submit
+for (const id of ['first_name','last_name','email','npi','address','state','zip']) {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') runCheck(); });
+}
+</script>
+</body>
+</html>
