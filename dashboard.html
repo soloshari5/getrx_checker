@@ -61,6 +61,11 @@
   .alert { padding: 12px 16px; border-radius: 10px; margin: 8px 0; font-size: 14px; }
   .alert-high, .alert-critical { background: rgba(224, 82, 82, 0.08); border: 1px solid rgba(224, 82, 82, 0.3); }
   .alert-medium { background: rgba(212, 168, 67, 0.08); border: 1px solid rgba(212, 168, 67, 0.3); }
+  .death-banner { background: rgba(224, 82, 82, 0.15); border: 1px solid var(--red); border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px; }
+  .death-banner .icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+  .death-banner .title { color: var(--red); font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .death-banner .body { font-size: 13px; color: var(--text); }
+  .death-banner .body a { color: var(--red); }
   .hidden { display: none; }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--bg); border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -133,6 +138,8 @@
   </div>
 
   <div id="results" class="hidden">
+    <div id="deathBanner" class="death-banner hidden"></div>
+
     <div class="card">
       <h2 style="font-size:16px;margin-bottom:8px;">Risk Assessment</h2>
       <div id="riskSummary"></div>
@@ -230,6 +237,26 @@ function isComplianceFinding(f) {
 
 function renderResults(data) {
   document.getElementById('results').classList.remove('hidden');
+
+  // Obituary/death-mention matches are the highest-priority signal this tool
+  // surfaces — a deceased prescriber's credentials being used is a known
+  // diversion pattern, so give it a dedicated banner instead of burying it
+  // in the findings list.
+  const deathBanner = document.getElementById('deathBanner');
+  const deathMatches = (data.osint?.findings || []).filter(f => f.finding_type === 'obituary');
+  if (deathMatches.length > 0) {
+    deathBanner.classList.remove('hidden');
+    deathBanner.innerHTML = `
+      <div class="icon">⚠️</div>
+      <div>
+        <div class="title">Possible death match — verify before approving any activity</div>
+        <div class="body">${deathMatches.map(f => `${f.title}${f.url ? ` — <a href="${f.url}" target="_blank">source</a>` : ''}`).join('<br>')}</div>
+      </div>
+    `;
+  } else {
+    deathBanner.classList.add('hidden');
+    deathBanner.innerHTML = '';
+  }
 
   const risk = data.risk_score || 0;
   const status = data.status || 'clean';
